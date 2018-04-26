@@ -39,12 +39,51 @@ const {
     Utils,      // Utility functions
 } = require('gateway-addon');
 
+const SSDPClient = require('node-ssdp').Client;
+
+
+class RokuDevice extends Device {
+    constructor(adapter, id, ip, port) {
+        super(adapter, id);
+
+        this.ip = ip;
+        this.port = port;
+        console.log('New Roku Created: ' + ip + ':' + port);
+
+        this.adapter.handleDeviceAdded(this);
+    }
+}
+
 
 class RokuAdapter extends Adapter {
     constructor(addonManager, manifest) {
         super(addonManager, 'roku-unknown', manifest.name);
 
+        this.ssdpClient = new SSDPClient();
+        this.ssdpClient.on('response', (headers, statusCode, rinfo) => {
+            this.parseSSDPResponse(headers, statusCode, rinfo);
+        });
+
         addonManager.addAdapter(this);
+    }
+
+
+    startPairing() {
+        this.ssdpClient.search('roku:ecp');
+    }
+
+    addDevice(ip, port) {
+        var id = 'roku' + ip;
+
+        if(!this.devices[id]) {
+            new RokuDevice(this, id, ip, port);
+        }
+    }
+
+    parseSSDPResponse(headers, status, rinfo) {
+        if(status == 200) {
+            this.addDevice(rinfo.address, rinfo.port);
+        }
     }
 }
 
@@ -56,3 +95,18 @@ function LoadRokuAdapter(addonManager, manifest, errorCallback) {
 
 module.exports = LoadRokuAdapter;
 
+
+/*
+2018-04-26 19:51:21.805 roku: { 'CACHE-CONTROL': 'max-age=3600',
+2018-04-26 19:51:21.806 roku:   ST: 'roku:ecp',
+2018-04-26 19:51:21.806 roku:   USN: 'uuid:roku:ecp:YU00J2327631',
+2018-04-26 19:51:21.806 roku:   EXT: '',
+2018-04-26 19:51:21.806 roku:   SERVER: 'Roku UPnP/1.0 Roku/8.0.0',
+2018-04-26 19:51:21.807 roku:   LOCATION: 'http://192.168.1.151:8060/',
+2018-04-26 19:51:21.807 roku:   WAKEUP: 'MAC=b8:a1:75:f3:6d:5f;Timeout=10' }
+2018-04-26 19:51:21.807 roku: 200
+2018-04-26 19:51:21.807 roku: { address: '192.168.1.151',
+2018-04-26 19:51:21.808 roku:   family: 'IPv4',
+2018-04-26 19:51:21.808 roku:   port: 1900,
+2018-04-26 19:51:21.808 roku:   size: 216 }
+ */
