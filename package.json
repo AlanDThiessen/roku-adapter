@@ -20,6 +20,11 @@
   "bugs": {
     "url": "https://github.com/AlanDThiessen/roku-adapter/issues"
   },
+  "files": [
+    "LICENSE",
+    "roku-adapter.js",
+    "index.js"
+  ],
   "homepage": "https://github.com/AlanDThiessen/roku-adapter#readme",
   "moziot": {
     "api": {
