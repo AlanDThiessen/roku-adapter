@@ -40,24 +40,37 @@ const {
 } = require('gateway-addon');
 
 const SSDPClient = require('node-ssdp').Client;
+const roku = require('roku');
+
 
 
 class RokuDevice extends Device {
-    constructor(adapter, id, ip, port) {
+    constructor(adapter, id, info, location) {
         super(adapter, id);
 
-        this.ip = ip;
-        this.port = port;
-        console.log('New Roku Created: ' + ip + ':' + port);
+        this.name = info.friendlyName;
+        this.description = info.modelName;
+        this.type = 'thing';
+        this.roku = new Roku(location);
 
         this.adapter.handleDeviceAdded(this);
+    }
+
+    updateInfo() {
+        this.roku.info((err, info) => {
+            console.log(err);
+            if(err === null) {
+                console.log(info);
+                this.setName(info.friendlyName);
+            }
+        });
     }
 }
 
 
 class RokuAdapter extends Adapter {
     constructor(addonManager, manifest) {
-        super(addonManager, 'roku-unknown', manifest.name);
+        super(addonManager, 'roku', manifest.name);
 
         this.ssdpClient = new SSDPClient();
         this.ssdpClient.on('response', (headers, statusCode, rinfo) => {
@@ -72,20 +85,32 @@ class RokuAdapter extends Adapter {
         this.ssdpClient.search('roku:ecp');
     }
 
-    addDevice(ip, port) {
-        var id = 'roku' + ip;
+
+    unload() {
+        return Promise.resolve();
+    }
+
+
+    addDevice(uuid, info, location) {
+        var id = 'roku-' + uuid;
 
         if(!this.devices[id]) {
-            new RokuDevice(this, id, ip, port);
+            new RokuDevice(this, id, info, location);
         }
     }
 
     parseSSDPResponse(headers, status, rinfo) {
         if(status == 200) {
-            this.addDevice(rinfo.address, rinfo.port);
+            var uid = headers.USN.split(':')[3];
+            var roku = new Roku(headers.LOCATION);
+
+            roku.info((err, info) => {
+                this.addDevice(uid, info, headers.LOCATION);
+            });
         }
     }
 }
+
 
 
 function LoadRokuAdapter(addonManager, manifest, errorCallback) {
