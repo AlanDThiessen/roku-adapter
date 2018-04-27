@@ -40,7 +40,7 @@ const {
 } = require('gateway-addon');
 
 const SSDPClient = require('node-ssdp').Client;
-const roku = require('roku');
+const Roku = require('roku');
 
 
 
